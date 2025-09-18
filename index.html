@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradeJournal</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Chart.js, html2canvas, jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+</head>
+
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">TL</div>
+        <div class="brand-name">TradeLog</div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" onclick="showSection('dashboard')">Dashboard</button>
+        <button class="nav-item" onclick="showSection('journal')">Journal</button>
+        <button class="nav-item" onclick="showSection('newTrade')">New Trade</button>
+        <button class="nav-item" onclick="showSection('reports')">Reports</button>
+      </nav>
+
+      <div class="sidebar-foot">Local • Private</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="welcome">
+          <h1>Welcome, Trader</h1>
+          <div class="subtitle">FTMO-style Journal</div>
+        </div>
+        <div class="top-actions">
+          <button id="exportPdfBtn" class="btn ghost">Export PDF</button>
+          <div class="profile">👤 You</div>
+        </div>
+      </header>
+
+      <!-- Dashboard -->
+      <section id="dashboard" class="page active">
+        <div class="ticker" id="ticker">
+          <div id="tickerContent" class="ticker-inner"></div>
+        </div>
+
+        <div class="cards">
+          <div class="card stat">
+            <div class="label">Net P/L</div>
+            <div id="statNet" class="value">—</div>
+          </div>
+          <div class="card stat">
+            <div class="label">Win Rate</div>
+            <div id="statWin" class="value">—</div>
+          </div>
+          <div class="card stat">
+            <div class="label">Avg R:R</div>
+            <div id="statRR" class="value">—</div>
+          </div>
+          <div class="card stat">
+            <div class="label">Trades</div>
+            <div id="statTotal" class="value">0</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">Equity Curve</div>
+            <canvas id="equityChart" height="180"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header">Recent Trades</div>
+            <div id="recentList" class="recent-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Journal -->
+      <section id="journal" class="page">
+        <div class="page-header">
+          <h2>Journal</h2>
+          <div class="filters">
+            <button class="filter-btn active" data-cat="All">All</button>
+            <button class="filter-btn" data-cat="Forex">Forex</button>
+            <button class="filter-btn" data-cat="Gold">Gold</button>
+            <button class="filter-btn" data-cat="Oil">Oil</button>
+            <button class="filter-btn" data-cat="Crypto">Crypto</button>
+            <input id="searchBox" placeholder="Search symbol / notes..." autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="overflow">
+            <table class="journal-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Symbol</th>
+                  <th>Cat</th>
+                  <th>Side</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Lot</th>
+                  <th>P/L</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="journalBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- New Trade -->
+      <section id="newTrade" class="page">
+        <h2>New Trade</h2>
+        <div class="card form-card">
+          <form id="tradeForm" autocomplete="off">
+            <div class="form-grid">
+              <label>Date
+                <input id="tradeDate" name="trade_date" type="date" required autocomplete="off" />
+              </label>
+              <label>Time
+                <input id="tradeTime" name="trade_time" type="time" autocomplete="off" />
+              </label>
+              <label>Symbol
+                <input id="symbol" name="trade_symbol" placeholder="e.g. EURUSD / XAUUSD / BTCUSD" required
+                  autocomplete="off" />
+              </label>
+              <label>Side
+                <select id="side" name="trade_side" autocomplete="off">
+                  <option value="long">Long</option>
+                  <option value="short">Short</option>
+                </select>
+              </label>
+              <label>Entry Price
+                <input id="entry" name="trade_entry" type="number" step="any" autocomplete="off" />
+              </label>
+              <label>Exit Price
+                <input id="exit" name="trade_exit" type="number" step="any" autocomplete="off" />
+              </label>
+              <label>Stop Loss
+                <input id="stoploss" name="trade_stoploss" type="number" step="any" autocomplete="off" />
+              </label>
+
+              <label>Lot Size
+                <input id="lot" name="trade_lot" type="number" step="any" value="1" autocomplete="off" />
+              </label>
+              <label>Contract Size
+                <input id="contract" name="trade_contract" type="number" step="any" value="1" autocomplete="off" />
+              </label>
+              <label>Category
+                <input id="category" name="trade_category" type="text" readonly autocomplete="off" />
+              </label>
+              <label>P/L Preview
+                <input id="plPreview" name="trade_pl" readonly autocomplete="off" />
+              </label>
+            </div>
+
+            <label>Notes
+              <textarea id="notes" name="trade_notes" rows="3" autocomplete="off"></textarea>
+            </label>
+
+            <label>Screenshot
+              <input type="file" id="screenshot" name="trade_screenshot" accept="image/*" autocomplete="off">
+            </label>
+
+            <div class="form-actions">
+              <button id="saveBtn" class="btn" type="submit">Save Trade</button>
+              <button id="resetBtn" type="button" class="btn ghost">Reset</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Reports -->
+      <section id="reports" class="page">
+        <h2>Reports</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-header">Win vs Loss</div>
+            <canvas id="winLossChart" height="160"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header">Monthly P/L</div>
+            <canvas id="monthlyChart" height="160"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
