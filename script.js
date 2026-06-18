@@ -28,7 +28,7 @@ function save() {
   renderAll(); 
 }
 
-// Fixed Category detection to support Silver properly
+// 1. Fixed Category detection to support Silver (XAGUSD) properly
 function getCategory(sym) {
   if (!sym) return 'Other';
   sym = sym.toUpperCase().trim();
@@ -47,7 +47,7 @@ function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   if (symbol.includes('XAU')) {
     pl = (exit - entry) * 100 * lot * contract;
   } else if (symbol.includes('XAG')) {
-    pl = (exit - entry) * 5000 * lot * contract; // Silver calculation logic
+    pl = (exit - entry) * 5000 * lot * contract; // Silver calculation point multiplier
   } else if (symbol.includes('XTI') || symbol.includes('OIL') || symbol.includes('USOIL')) {
     pl = ((exit - entry) / 0.01) * lot * contract;
   } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
@@ -61,6 +61,7 @@ function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   return side === 'long' ? Number(pl.toFixed(2)) : Number((-pl).toFixed(2));
 }
 
+// 2. Render Journal Table without notes, showing Liquidity Sweep Timeframe
 function renderJournal(filter = 'All', search = '') {
   journalBody.innerHTML = '';
   const rows = trades.filter(t => {
@@ -75,6 +76,7 @@ function renderJournal(filter = 'All', search = '') {
   rows.forEach((t) => {
     const tr = document.createElement('tr');
     
+    // Proper handling of Liquidity Check & Timeframe
     const isSweep = t.liquidity === 'Yes';
     const tf = t.liquidity_tf || 'None';
     let liquidityDisplay = 'No';
@@ -94,7 +96,7 @@ function renderJournal(filter = 'All', search = '') {
       <td style="font-weight: 600; color: ${isSweep ? '#7c4dff' : '#cfe6ff'}">${liquidityDisplay}</td>
       <td>
         ${t.screenshot
-        ? `<img src="${t.screenshot}" alt="screenshot" width="60" style="border-radius:4px;">`
+        ? `<img src="${t.screenshot}" alt="screenshot" width="60" style="border-radius:4px; cursor:pointer;">`
         : '—'}
       </td>
       <td>
@@ -175,7 +177,8 @@ function updateTicker() {
 function showSection(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelector(`[onclick="showSection('${id}')"]`).classList.add('active');
+  const btn = document.querySelector(`[onclick="showSection('${id}')"]`);
+  if (btn) btn.classList.add('active');
   document.getElementById(id).classList.add('active');
   renderAll();
 }
@@ -212,6 +215,7 @@ function updatePLPreview() {
   } else preview.value = '';
 }
 
+// 3. Form Submission with success alert popup message
 document.getElementById("tradeForm").addEventListener("submit", e => {
   e.preventDefault();
   const fileInput = document.getElementById("screenshot");
@@ -246,7 +250,7 @@ document.getElementById("tradeForm").addEventListener("submit", e => {
     trades.unshift(trade);
     save();
 
-    // Custom Alert Notification Trigger
+    // Success Alert Message
     alert("🎉 Saved your trade successfully!");
     document.getElementById("tradeForm").reset();
     document.getElementById("category").value = 'Other';
@@ -268,6 +272,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('category').value = 'Other';
 });
 
+// Remove single trade handler
 document.body.addEventListener('click', (ev) => {
   if (ev.target.matches('.remove-btn')) {
     const id = ev.target.getAttribute('data-index');
@@ -277,18 +282,40 @@ document.body.addEventListener('click', (ev) => {
   }
 });
 
-// Clear All Functionality
-document.getElementById('clearAllBtn').addEventListener('click', () => {
-  if (trades.length === 0) {
-    alert("Journal pehle se hi khali hai!");
-    return;
-  }
-  if (confirm("🚨 Warning: Kya aap sach mein SARE trades delete karna chahte hain? Ek baar delete karne ke baad data vapas nahi aayega!")) {
-    trades = [];
-    save();
-    alert("💥 Saare trades ek sath clear kar diye gaye hain!");
+// 4. Global Clear All Trades Functionality (Select/Delete All)
+const clearAllBtn = document.getElementById('clearAllBtn');
+if (clearAllBtn) {
+  clearAllBtn.addEventListener('click', () => {
+    if (trades.length === 0) {
+      alert("Journal pehle se hi khali hai!");
+      return;
+    }
+    if (confirm("🚨 Warning: Kya aap sach mein SARE trades delete karna chahte hain? Ek baar delete karne ke baad data vapas nahi aayega!")) {
+      trades = [];
+      save();
+      alert("💥 Saare trades ek sath clear kar diye gaye hain!");
+    }
+  });
+}
+
+// 5. Screenshot Zoom Modal Popup Click Handler
+document.body.addEventListener('click', (ev) => {
+  if (ev.target.matches('.journal-table img')) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('imgModalTarget');
+    if (modal && modalImg) {
+      modalImg.src = ev.target.src;
+      modal.style.display = "flex";
+    }
   }
 });
+
+const modal = document.getElementById('imageModal');
+if (modal) {
+  modal.addEventListener('click', () => {
+    modal.style.display = "none";
+  });
+}
 
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -298,7 +325,10 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
   });
 });
 
-document.getElementById('searchBox').addEventListener('input', () => renderAll());
+const searchBox = document.getElementById('searchBox');
+if (searchBox) {
+  searchBox.addEventListener('input', () => renderAll());
+}
 
 window.addEventListener("load", () => {
   trades = trades.filter(t => t && t._id && t.symbol);
