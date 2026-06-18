@@ -74,10 +74,10 @@ function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
 function renderJournal(filter = 'All', search = '') {
   journalBody.innerHTML = '';
   const rows = trades.filter(t => {
-    const tCat = t.category || getCategory(t.symbol);
-    if (filter && filter !== 'All' && tCat !== filter) return false;
+    if (filter && filter !== 'All' && getCategory(t.symbol) !== filter) return false;
     if (search) {
       const s = search.toLowerCase();
+      // Notes remove hone ke baad bhi filter functionality backup ke liye notes search rakhegi
       return (t.symbol || '').toLowerCase().includes(s) || (t.notes || '').toLowerCase().includes(s);
     }
     return true;
@@ -85,24 +85,35 @@ function renderJournal(filter = 'All', search = '') {
 
   rows.forEach((t) => {
     const tr = document.createElement('tr');
-    // Append Liquidity metadata into notes dynamically if swept
-    const liqBadge = t.liquidity === 'Yes' ? `<br><span style="font-size:10px; background:#7c4dff; padding:2px 4px; border-radius:4px; color:white;">⚡ Liq Sweep (${t.liquidityTF})</span>` : '';
+
+    // Check liquidity data or fallback to defaults
+    const isSweep = t.liquidity === 'Yes' || t.trade_liquidity === 'Yes';
+    const tf = t.liquidity_tf || t.trade_liquidity_tf || 'None';
+
+    let liquidityDisplay = '—';
+    if (isSweep) {
+      liquidityDisplay = `⚡ Yes (${tf !== 'None' ? tf : 'No TF'})`;
+    } else if (t.liquidity === 'No' || t.trade_liquidity === 'No') {
+      liquidityDisplay = 'No';
+    }
 
     tr.innerHTML = `
       <td>${t.date} ${t.time || ''}</td>
-      <td><strong>${t.symbol}</strong>${liqBadge}</td>
-      <td>${t.category || getCategory(t.symbol)}</td>
-      <td style="text-transform: capitalize; font-weight: bold; color: ${t.side === 'long' ? '#00f0d1' : '#ff7b7b'}">${t.side}</td>
+      <td><strong>${t.symbol}</strong></td>
+      <td>${getCategory(t.symbol)}</td>
+      <td>${t.side}</td>
       <td>${t.entry}</td>
       <td>${t.exit}</td>
       <td>${t.lot}</td>
-      <td style="color:${t.pl >= 0 ? '#7ef0c7' : '#ff7b7b'}">${t.pl >= 0 ? '+' : ''}${t.pl?.toFixed(2) ?? '—'}</td>
-      <td>${escapeHtml(t.notes || '')}</td>
+      <td style="color:${t.pl >= 0 ? '#7ef0c7' : '#ff7b7b'}">${t.pl?.toFixed(2) ?? '—'}</td>
+      <td style="font-weight: 600; color: ${isSweep ? '#7c4dff' : '#cfe6ff'}">${liquidityDisplay}</td>
       <td>
-        ${t.screenshot ? `<img src="${t.screenshot}" alt="screenshot" width="60" style="border-radius:4px;">` : '—'}
+        ${t.screenshot
+        ? `<img src="${t.screenshot}" alt="screenshot" width="60" style="border-radius:4px;">`
+        : '—'}
       </td>
       <td>
-        <button class="remove-btn" data-index="${t._id}" style="background:none; border:none; cursor:pointer;">🗑️</button>
+        <button class="remove-btn" data-index="${t._id}" title="Remove trade">🗑️</button>
       </td>
     `;
     journalBody.appendChild(tr);
