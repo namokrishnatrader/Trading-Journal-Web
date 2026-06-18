@@ -28,9 +28,10 @@ function save() {
   renderAll(); 
 }
 
+// Fixed Category detection to support Silver properly
 function getCategory(sym) {
   if (!sym) return 'Other';
-  sym = sym.toUpperCase();
+  sym = sym.toUpperCase().trim();
   if (sym.includes('XAU')) return 'Gold';
   if (sym.includes('XAG')) return 'Silver';
   if (sym.includes('XTI') || sym.includes('OIL') || sym.includes('USOIL')) return 'Oil';
@@ -41,12 +42,12 @@ function getCategory(sym) {
 
 function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   if (isNaN(entry) || isNaN(exit) || isNaN(lot)) return null;
-  symbol = (symbol || '').toUpperCase();
+  symbol = (symbol || '').toUpperCase().trim();
   let pl = 0;
   if (symbol.includes('XAU')) {
     pl = (exit - entry) * 100 * lot * contract;
   } else if (symbol.includes('XAG')) {
-    pl = (exit - entry) * 5000 * lot * contract;
+    pl = (exit - entry) * 5000 * lot * contract; // Silver calculation logic
   } else if (symbol.includes('XTI') || symbol.includes('OIL') || symbol.includes('USOIL')) {
     pl = ((exit - entry) / 0.01) * lot * contract;
   } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
@@ -74,7 +75,6 @@ function renderJournal(filter = 'All', search = '') {
   rows.forEach((t) => {
     const tr = document.createElement('tr');
     
-    // Fix: Liquidity setup handles data correctly
     const isSweep = t.liquidity === 'Yes';
     const tf = t.liquidity_tf || 'None';
     let liquidityDisplay = 'No';
@@ -212,7 +212,6 @@ function updatePLPreview() {
   } else preview.value = '';
 }
 
-// Fix: Handle submission, fetch selections properly and notify user
 document.getElementById("tradeForm").addEventListener("submit", e => {
   e.preventDefault();
   const fileInput = document.getElementById("screenshot");
@@ -247,8 +246,8 @@ document.getElementById("tradeForm").addEventListener("submit", e => {
     trades.unshift(trade);
     save();
 
-    // Alert notification for successful save!
-    alert("🎉 Trade saved successfully!");
+    // Custom Alert Notification Trigger
+    alert("🎉 Saved your trade successfully!");
     document.getElementById("tradeForm").reset();
     document.getElementById("category").value = 'Other';
     document.getElementById("plPreview").value = '';
@@ -278,7 +277,7 @@ document.body.addEventListener('click', (ev) => {
   }
 });
 
-// Bulk Clear Action Activated
+// Clear All Functionality
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if (trades.length === 0) {
     alert("Journal pehle se hi khali hai!");
