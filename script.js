@@ -31,7 +31,7 @@ function save() {
   renderAll();
 }
 
-// Category detection (Updated for Silver)
+/// Category detection (Updated for Silver)
 function getCategory(sym) {
   if (!sym) return 'Other';
   sym = sym.toUpperCase();
