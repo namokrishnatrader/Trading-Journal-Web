@@ -1,4 +1,4 @@
-// script.js — FTMO-style Trade Journal app (vanilla JS)
+// script.js — FTMO-style Trade Journal app with Advanced Liquidity Analytics
 const LS_KEY = 'tj_ftmo_v1';
 let trades = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
 
@@ -20,7 +20,9 @@ const equityCtx = document.getElementById('equityChart').getContext('2d');
 const winLossCtx = document.getElementById('winLossChart').getContext('2d');
 const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
 
-let equityChart, winLossChart, monthlyChart;
+// New Analytics Canvas Context
+let liquidityCtx;
+let equityChart, winLossChart, monthlyChart, liquidityChart;
 
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -31,12 +33,12 @@ function save() {
   renderAll();
 }
 
-/// Category detection (Updated for Silver)
+// Category detection (Updated for Silver)
 function getCategory(sym) {
   if (!sym) return 'Other';
   sym = sym.toUpperCase();
   if (sym.includes('XAU')) return 'Gold';
-  if (sym.includes('XAG')) return 'Silver'; // ✅ Silver category added
+  if (sym.includes('XAG')) return 'Silver';
   if (sym.includes('XTI') || sym.includes('OIL') || sym.includes('USOIL')) return 'Oil';
   if (sym.includes('BTC') || sym.includes('ETH') || sym.includes('XRP') || sym.includes('SOL')) return 'Crypto';
   if (/[A-Z]{6}/.test(sym) && sym.endsWith('USD')) return 'Forex';
@@ -50,12 +52,8 @@ function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   let pl = 0;
 
   if (symbol.includes('XAU')) {
-    // Gold: 1 lot = 100 ounces
     pl = (exit - entry) * 100 * lot * contract;
   } else if (symbol.includes('XAG')) {
-    // ✅ Silver: Standard contract size is 5000 ounces per lot
-    // Agar tumhare broker ka contract size alag hai, toh tum HTML form mein 
-    // Contract Size field ko 5000 ke badle change kar sakte ho.
     const silverContract = contract === 1 ? 5000 : contract;
     pl = (exit - entry) * lot * silverContract;
   } else if (symbol.includes('XTI') || symbol.includes('OIL') || symbol.includes('USOIL')) {
@@ -87,9 +85,12 @@ function renderJournal(filter = 'All', search = '') {
 
   rows.forEach((t) => {
     const tr = document.createElement('tr');
+    // Append Liquidity metadata into notes dynamically if swept
+    const liqBadge = t.liquidity === 'Yes' ? `<br><span style="font-size:10px; background:#7c4dff; padding:2px 4px; border-radius:4px; color:white;">⚡ Liq Sweep (${t.liquidityTF})</span>` : '';
+
     tr.innerHTML = `
       <td>${t.date} ${t.time || ''}</td>
-      <td><strong>${t.symbol}</strong></td>
+      <td><strong>${t.symbol}</strong>${liqBadge}</td>
       <td>${t.category || getCategory(t.symbol)}</td>
       <td style="text-transform: capitalize; font-weight: bold; color: ${t.side === 'long' ? '#00f0d1' : '#ff7b7b'}">${t.side}</td>
       <td>${t.entry}</td>
@@ -125,15 +126,13 @@ function renderDashboard() {
   statWin.textContent = winRate;
   statTotal.textContent = total;
 
-  // Average R:R Calculator (Dynamic!)
   let totalRR = 0, countRR = 0;
   trades.forEach(t => {
     if (t.stoploss && !isNaN(t.stoploss)) {
       const risk = Math.abs(t.entry - t.stoploss);
       const reward = t.pl;
       if (risk > 0) {
-        // Simple approximate R:R calculation based on actual P/L vs Risk
-        totalRR += (reward / (risk * t.lot * (t.symbol.includes('XAU') ? 100 : 1)));
+        totalRR += (reward / (risk * t.lot * (t.symbol.includes('XAU') ? 100 : t.symbol.includes('XAG') ? 5000 : 1)));
         countRR++;
       }
     }
@@ -141,7 +140,6 @@ function renderDashboard() {
   statRR.textContent = countRR > 0 ? `1:${(totalRR / countRR).toFixed(1)}` : '—';
 
   recentList.innerHTML = '';
-  // Naye trades hamesha top par dikhane ke liye slice safely
   trades.slice(0, 6).forEach(t => {
     const d = document.createElement('div');
     d.className = 'recent-item';
@@ -154,7 +152,7 @@ function renderDashboard() {
     recentList.appendChild(d);
   });
 
-  // Charts update
+  // Main Equity Line Chart
   const labels = [...trades].reverse().map(t => t.date);
   let cum = 0;
   const data = [...trades].reverse().map(t => (cum += Number(t.pl) || 0));
@@ -166,10 +164,34 @@ function renderDashboard() {
     options: { responsive: true, plugins: { legend: { display: false } } }
   });
 
+  updateTicker();
+}
+
+// Advanced Reports Analytics & Interactive Calendar
+function renderAdvancedReports() {
+  const total = trades.length;
+  const wins = trades.filter(t => Number(t.pl) > 0);
+  const losses = trades.filter(t => Number(t.pl) < 0);
+
+  // 1. Profit Factor Calculation
+  const grossProfit = wins.reduce((a, b) => a + Number(b.pl), 0);
+  const grossLoss = Math.abs(losses.reduce((a, b) => a + Number(b.pl), 0));
+  document.getElementById('statProfitFactor').textContent = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : (grossProfit > 0 ? '∞' : '—');
+
+  // 2. Average Win & Loss Amounts
+  document.getElementById('statAvgWin').textContent = wins.length > 0 ? `$${(grossProfit / wins.length).toFixed(2)}` : '—';
+  document.getElementById('statAvgLoss').textContent = losses.length > 0 ? `$${(grossLoss / losses.length).toFixed(2)}` : '—';
+
+  // 3. Liquidity Strategy Analytics
+  const liqTrades = trades.filter(t => t.liquidity === 'Yes');
+  const liqWins = liqTrades.filter(t => Number(t.pl) > 0).length;
+  document.getElementById('statLiqWinRate').textContent = liqTrades.length > 0 ? `${((liqWins / liqTrades.length) * 100).toFixed(1)}%` : '—';
+
+  // 4. Update Native Report Charts
   if (winLossChart) winLossChart.destroy();
   winLossChart = new Chart(winLossCtx, {
     type: 'doughnut',
-    data: { labels: ['Wins', 'Losses'], datasets: [{ data: [wins, losses], backgroundColor: ['#16a34a', '#ef4444'] }] },
+    data: { labels: ['Wins', 'Losses'], datasets: [{ data: [wins.length, losses.length], backgroundColor: ['#16a34a', '#ef4444'] }] },
     options: { plugins: { legend: { position: 'bottom', labels: { color: '#e6f2ff' } } } }
   });
 
@@ -179,15 +201,100 @@ function renderDashboard() {
     monthly[m] = (monthly[m] || 0) + Number(t.pl || 0);
   });
   const months = Object.keys(monthly).sort();
-  const mdata = months.map(k => monthly[k]);
   if (monthlyChart) monthlyChart.destroy();
   monthlyChart = new Chart(monthlyCtx, {
     type: 'bar',
-    data: { labels: months, datasets: [{ label: 'Monthly P/L', data: mdata, backgroundColor: mdata.map(v => v >= 0 ? '#00f0d1' : '#ff6b6b') }] },
+    data: { labels: months, datasets: [{ label: 'Monthly P/L', data: months.map(k => monthly[k]), backgroundColor: months.map(k => monthly[k] >= 0 ? '#00f0d1' : '#ff6b6b') }] },
     options: { plugins: { legend: { display: false } } }
   });
 
-  updateTicker();
+  // 5. Liquidity Timeframe Performance Multi-Chart
+  const tfPerformance = { '5m': 0, '15m': 0, '30m': 0, '1h': 0, '4h': 0, '1D': 0, '1W': 0, '1M': 0 };
+  liqTrades.forEach(t => {
+    if (t.liquidityTF in tfPerformance) {
+      tfPerformance[t.liquidityTF] += Number(t.pl || 0);
+    }
+  });
+
+  const liqEl = document.getElementById('liquidityChart');
+  if (liqEl) {
+    liquidityCtx = liqEl.getContext('2d');
+    if (liquidityChart) liquidityChart.destroy();
+    liquidityChart = new Chart(liquidityCtx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(tfPerformance),
+        datasets: [{ label: 'Cumulative P/L ($)', data: Object.values(tfPerformance), backgroundColor: Object.values(tfPerformance).map(v => v >= 0 ? '#7c4dff' : '#ff6b6b') }]
+      },
+      options: { plugins: { legend: { display: false } } }
+    });
+  }
+
+  // 6. Generate Trading Calendar System
+  generateCalendar();
+}
+
+function generateCalendar() {
+  const grid = document.getElementById('calendarGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const today = new Date();
+  document.getElementById('calendarMonthYear').textContent = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  // Add Calendar Week Header
+  const daysHeader = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  daysHeader.forEach(d => {
+    const head = document.createElement('div');
+    head.className = 'calendar-day-head';
+    head.textContent = d;
+    grid.appendChild(head);
+  });
+
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
+  const totalDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+
+  // Create padding for empty trailing days
+  for (let i = 0; i < firstDay; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'calendar-cell cal-empty';
+    grid.appendChild(emptyCell);
+  }
+
+  // Map P/L performance data points by precise calendar date string matches
+  const dailyPLMap = {};
+  trades.forEach(t => {
+    if (t.date) {
+      dailyPLMap[t.date] = (dailyPLMap[t.date] || 0) + Number(t.pl || 0);
+    }
+  });
+
+  for (let day = 1; day <= totalDays; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'calendar-cell';
+
+    // Parse date parsing string format tracking setup rules
+    const monthStr = String(today.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateKey = `${today.getFullYear()}-${monthStr}-${dayStr}`;
+
+    const numDiv = document.createElement('div');
+    numDiv.className = 'day-num';
+    numDiv.textContent = day;
+    cell.appendChild(numDiv);
+
+    if (dateKey in dailyPLMap) {
+      const netDayPL = dailyPLMap[dateKey];
+      const plDiv = document.createElement('div');
+      plDiv.className = 'day-pl';
+      plDiv.textContent = (netDayPL >= 0 ? '+$' : '-$') + Math.abs(netDayPL).toFixed(0);
+      plDiv.style.color = netDayPL >= 0 ? '#00f0d1' : '#ff6b6b';
+      cell.appendChild(plDiv);
+      cell.classList.add(netDayPL >= 0 ? 'cal-profit' : 'cal-loss');
+    }
+
+    grid.appendChild(cell);
+  }
 }
 
 function updateTicker() {
@@ -212,7 +319,12 @@ function showSection(id) {
   const targetBtn = document.querySelector(`[onclick="showSection('${id}')"]`);
   if (targetBtn) targetBtn.classList.add('active');
   document.getElementById(id).classList.add('active');
-  renderAll();
+
+  if (id === 'reports') {
+    renderAdvancedReports();
+  } else {
+    renderAll();
+  }
 }
 
 // Auto Category Switcher
@@ -251,7 +363,7 @@ function updatePLPreview() {
   preview.value = baseText;
 }
 
-// Save trade
+// Save trade setup
 document.getElementById("tradeForm").addEventListener("submit", e => {
   e.preventDefault();
   const fileInput = document.getElementById("screenshot");
@@ -277,9 +389,12 @@ document.getElementById("tradeForm").addEventListener("submit", e => {
       stoploss: parseFloat(document.getElementById("stoploss").value) || null,
       lot: parseFloat(document.getElementById("lot").value) || 1,
       contract: parseFloat(document.getElementById("contract").value) || 1,
-      category: document.getElementById("category").value, // Fixed: user selected category picked here
+      category: document.getElementById("category").value,
       notes: document.getElementById("notes").value,
-      screenshot: screenshot || ""
+      screenshot: screenshot || "",
+      // Capture custom user liquidity specifications fields
+      liquidity: document.getElementById("liquidityTag").value,
+      liquidityTF: document.getElementById("liquidityTF").value
     };
 
     trade.pl = calculatePL(trade.symbol, trade.entry, trade.exit, trade.lot, trade.contract, trade.side);
@@ -318,7 +433,7 @@ document.body.addEventListener('click', (ev) => {
   }
 });
 
-// Filters & search
+// Filters & search mapping
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -368,7 +483,7 @@ document.getElementById('exportPdfBtn').addEventListener('click', () => {
     body: tableData,
     startY: 60,
     styles: { fontSize: 10 },
-    headStyles: { fillColor: [124, 77, 255] }, // Purple matching our UI accent
+    headStyles: { fillColor: [124, 77, 255] },
     alternateRowStyles: { fillColor: [245, 245, 245] }
   });
 
