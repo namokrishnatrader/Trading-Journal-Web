@@ -13,7 +13,6 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
 </head>
 
 <body>
@@ -66,7 +65,7 @@
           </div>
           <div class="card stat">
             <div class="label">Avg R:R</div>
-            <div id="statRR" class="value">—</div>
+            <div id="statCamp" class="value">—</div>
           </div>
           <div class="card stat">
             <div class="label">Trades</div>
@@ -94,6 +93,7 @@
             <button class="filter-btn active" data-cat="All">All</button>
             <button class="filter-btn" data-cat="Forex">Forex</button>
             <button class="filter-btn" data-cat="Gold">Gold</button>
+            <button class="filter-btn" data-cat="Silver">Silver</button>
             <button class="filter-btn" data-cat="Oil">Oil</button>
             <button class="filter-btn" data-cat="Crypto">Crypto</button>
             <input id="searchBox" placeholder="Search symbol / notes..." autocomplete="off" />
@@ -114,6 +114,8 @@
                   <th>Lot</th>
                   <th>P/L</th>
                   <th>Notes</th>
+                  <th>Screenshot</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="journalBody"></tbody>
@@ -137,8 +139,7 @@
               </label>
 
               <label>Symbol
-                <input id="symbol" name="trade_symbol" placeholder="e.g. EURUSD / XAUUSD / BTCUSD" required
-                  autocomplete="off" />
+                <input id="symbol" name="trade_symbol" placeholder="e.g. EURUSD / XAUUSD / BTCUSD" required autocomplete="off" />
               </label>
 
               <label>Side
@@ -172,6 +173,7 @@
                 <select id="category" name="trade_category" required>
                   <option value="Forex">Forex</option>
                   <option value="Gold">Gold</option>
+                  <option value="Silver">Silver</option>
                   <option value="Crypto">Crypto</option>
                   <option value="Stocks">Stocks</option>
                   <option value="Oil">Oil</option>
@@ -179,42 +181,41 @@
                 </select>
               </label>
 
-              <label>P/L Preview
+              <label>Liquidity Sweep?
+                <select id="liquidityTag" name="trade_liquidity">
+                  <option value="No" selected>No Sweep</option>
+                  <option value="Yes">Yes (Liquidity Swept)</option>
+                </select>
+              </label>
+
+              <label>Liquidity Timeframe
+                <select id="liquidityTF" name="trade_liquidity_tf">
+                  <option value="None" selected>—</option>
+                  <option value="5m">5 Min</option>
+                  <option value="15m">15 Min</option>
+                  <option value="30m">30 Min</option>
+                  <option value="1h">1 Hr</option>
+                  <option value="4h">4 Hr</option>
+                  <option value="1D">1 Day</option>
+                  <option value="1W">1 Week</option>
+                  <option value="1M">1 Month</option>
+                </select>
+              </label>
+
+              <label style="grid-column: span 2;">P/L Preview
                 <input id="plPreview" name="trade_pl" readonly autocomplete="off" />
               </label>
             </div>
 
-            <label>Notes
+            <label style="margin-top: 15px; display: block;">Notes
               <textarea id="notes" name="trade_notes" rows="3" autocomplete="off"></textarea>
             </label>
 
-            <!-- Added Liquidity Tracking & Timeframe -->
-            <label>Liquidity Sweep?
-              <select id="liquidityTag" name="trade_liquidity">
-                <option value="No" selected>No Sweep</option>
-                <option value="Yes">Yes (Liquidity Swept)</option>
-              </select>
-            </label>
-
-            <label>Liquidity Timeframe
-              <select id="liquidityTF" name="trade_liquidity_tf">
-                <option value="None" selected>—</option>
-                <option value="5m">5 Min</option>
-                <option value="15m">15 Min</option>
-                <option value="30m">30 Min</option>
-                <option value="1h">1 Hr</option>
-                <option value="4h">4 Hr</option>
-                <option value="1D">1 Day</option>
-                <option value="1W">1 Week</option>
-                <option value="1M">1 Month</option>
-              </select>
-            </label>
-
-            <label>Screenshot
+            <label style="margin-top: 15px; display: block;">Screenshot
               <input type="file" id="screenshot" name="trade_screenshot" accept="image/*" autocomplete="off">
             </label>
 
-            <div class="form-actions">
+            <div class="form-actions" style="margin-top: 20px;">
               <button id="saveBtn" class="btn" type="submit">Save Trade</button>
               <button id="resetBtn" type="button" class="btn ghost">Reset</button>
             </div>
@@ -273,8 +274,10 @@
           <canvas id="liquidityChart" height="100"></canvas>
         </div>
       </section>
+    </main>
+  </div>
 
-      <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 
 </html>
