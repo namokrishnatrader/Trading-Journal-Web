@@ -406,3 +406,63 @@ option {
   color: #eee;
   /* dropdown option text */
 }
+
+/* Trading Calendar Custom Grid Styles */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.calendar-day-head {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 0;
+}
+
+.calendar-cell {
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 10px 4px;
+  min-height: 55px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s;
+}
+
+.calendar-cell:hover {
+  transform: scale(1.03);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.calendar-cell .day-num {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: left;
+  padding-left: 4px;
+}
+
+.calendar-cell .day-pl {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Color states for calendar days */
+.cal-profit {
+  background: rgba(0, 240, 209, 0.05) !important;
+  border-color: rgba(0, 240, 209, 0.2) !important;
+}
+
+.cal-loss {
+  background: rgba(255, 107, 107, 0.05) !important;
+  border-color: rgba(255, 107, 107, 0.2) !important;
+}
+
+.cal-empty {
+  opacity: 0.3;
+}
