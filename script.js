@@ -22,33 +22,42 @@ const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
 
 let equityChart, winLossChart, monthlyChart;
 
-function uid() { 
-  return Math.random().toString(36).slice(2, 9); 
+function uid() {
+  return Math.random().toString(36).slice(2, 9);
 }
 
-function save() { 
-  localStorage.setItem(LS_KEY, JSON.stringify(trades)); 
-  renderAll(); 
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify(trades));
+  renderAll();
 }
 
-// Category detection
+// Category detection (Updated for Silver)
 function getCategory(sym) {
   if (!sym) return 'Other';
   sym = sym.toUpperCase();
   if (sym.includes('XAU')) return 'Gold';
+  if (sym.includes('XAG')) return 'Silver'; // ✅ Silver category added
   if (sym.includes('XTI') || sym.includes('OIL') || sym.includes('USOIL')) return 'Oil';
   if (sym.includes('BTC') || sym.includes('ETH') || sym.includes('XRP') || sym.includes('SOL')) return 'Crypto';
   if (/[A-Z]{6}/.test(sym) && sym.endsWith('USD')) return 'Forex';
   return 'Other';
 }
 
-// P/L calculation
+// P/L calculation per instrument (Fixed for XAGUSD)
 function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   if (isNaN(entry) || isNaN(exit) || isNaN(lot)) return null;
   symbol = (symbol || '').toUpperCase();
   let pl = 0;
+
   if (symbol.includes('XAU')) {
+    // Gold: 1 lot = 100 ounces
     pl = (exit - entry) * 100 * lot * contract;
+  } else if (symbol.includes('XAG')) {
+    // ✅ Silver: Standard contract size is 5000 ounces per lot
+    // Agar tumhare broker ka contract size alag hai, toh tum HTML form mein 
+    // Contract Size field ko 5000 ke badle change kar sakte ho.
+    const silverContract = contract === 1 ? 5000 : contract;
+    pl = (exit - entry) * lot * silverContract;
   } else if (symbol.includes('XTI') || symbol.includes('OIL') || symbol.includes('USOIL')) {
     pl = ((exit - entry) / 0.01) * lot * contract;
   } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
@@ -59,6 +68,7 @@ function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   } else {
     pl = (exit - entry) * lot * contract;
   }
+
   return side === 'long' ? Number(pl.toFixed(2)) : Number((-pl).toFixed(2));
 }
 
@@ -120,10 +130,10 @@ function renderDashboard() {
   trades.forEach(t => {
     if (t.stoploss && !isNaN(t.stoploss)) {
       const risk = Math.abs(t.entry - t.stoploss);
-      const reward = t.pl; 
+      const reward = t.pl;
       if (risk > 0) {
         // Simple approximate R:R calculation based on actual P/L vs Risk
-        totalRR += (reward / (risk * t.lot * (t.symbol.includes('XAU') ? 100 : 1))); 
+        totalRR += (reward / (risk * t.lot * (t.symbol.includes('XAU') ? 100 : 1)));
         countRR++;
       }
     }
@@ -133,7 +143,7 @@ function renderDashboard() {
   recentList.innerHTML = '';
   // Naye trades hamesha top par dikhane ke liye slice safely
   trades.slice(0, 6).forEach(t => {
-    const d = document.createElement('div'); 
+    const d = document.createElement('div');
     d.className = 'recent-item';
     d.innerHTML = `
       <div><strong>${t.symbol}</strong><div class="muted">${t.date}</div></div>
@@ -146,7 +156,7 @@ function renderDashboard() {
 
   // Charts update
   const labels = [...trades].reverse().map(t => t.date);
-  let cum = 0; 
+  let cum = 0;
   const data = [...trades].reverse().map(t => (cum += Number(t.pl) || 0));
 
   if (equityChart) equityChart.destroy();
@@ -198,7 +208,7 @@ function updateTicker() {
 function showSection(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  
+
   const targetBtn = document.querySelector(`[onclick="showSection('${id}')"]`);
   if (targetBtn) targetBtn.classList.add('active');
   document.getElementById(id).classList.add('active');
@@ -225,19 +235,19 @@ function updatePLPreview() {
   const contract = parseFloat(document.getElementById('contract').value) || 1;
   const side = document.getElementById('side').value || 'long';
   const preview = document.getElementById('plPreview');
-  
+
   let baseText = '—';
   if (sym && !isNaN(entry) && !isNaN(exit)) {
     const pl = calculatePL(sym, entry, exit, lot, contract, side);
     baseText = (pl === null ? '—' : (pl >= 0 ? '+' : '') + pl.toFixed(2));
   }
-  
+
   const stop = parseFloat(document.getElementById("stoploss").value);
   if (!isNaN(stop) && sym && !isNaN(entry)) {
     const slLoss = calculatePL(sym, entry, stop, lot, contract, side);
     baseText += ` | SL Risk: ${slLoss ? slLoss.toFixed(2) : '—'}`;
   }
-  
+
   preview.value = baseText;
 }
 
@@ -326,9 +336,9 @@ window.addEventListener("load", () => {
 
 // PDF Export 
 document.getElementById('exportPdfBtn').addEventListener('click', () => {
-  if (trades.length === 0) { 
-    alert('No trades to export'); 
-    return; 
+  if (trades.length === 0) {
+    alert('No trades to export');
+    return;
   }
 
   const { jsPDF } = window.jspdf;
