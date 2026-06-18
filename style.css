@@ -466,3 +466,13 @@ option {
 .cal-empty {
   opacity: 0.3;
 }
+
+/* Table ki screenshot image ke liye zoom effect aura pointer */
+.journal-table img {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.journal-table img:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 8px var(--accent2);
+}
