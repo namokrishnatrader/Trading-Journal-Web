@@ -131,25 +131,31 @@
               <label>Date
                 <input id="tradeDate" name="trade_date" type="date" required autocomplete="off" />
               </label>
+
               <label>Time
                 <input id="tradeTime" name="trade_time" type="time" autocomplete="off" />
               </label>
+
               <label>Symbol
                 <input id="symbol" name="trade_symbol" placeholder="e.g. EURUSD / XAUUSD / BTCUSD" required
                   autocomplete="off" />
               </label>
+
               <label>Side
                 <select id="side" name="trade_side" autocomplete="off">
                   <option value="long">Long</option>
                   <option value="short">Short</option>
                 </select>
               </label>
+
               <label>Entry Price
                 <input id="entry" name="trade_entry" type="number" step="any" autocomplete="off" />
               </label>
+
               <label>Exit Price
                 <input id="exit" name="trade_exit" type="number" step="any" autocomplete="off" />
               </label>
+
               <label>Stop Loss
                 <input id="stoploss" name="trade_stoploss" type="number" step="any" autocomplete="off" />
               </label>
@@ -157,12 +163,22 @@
               <label>Lot Size
                 <input id="lot" name="trade_lot" type="number" step="any" value="1" autocomplete="off" />
               </label>
+
               <label>Contract Size
                 <input id="contract" name="trade_contract" type="number" step="any" value="1" autocomplete="off" />
               </label>
+
               <label>Category
-                <input id="category" name="trade_category" type="text" readonly autocomplete="off" />
+                <select id="category" name="trade_category" required>
+                  <option value="Forex">Forex</option>
+                  <option value="Gold">Gold</option>
+                  <option value="Crypto">Crypto</option>
+                  <option value="Stocks">Stocks</option>
+                  <option value="Oil">Oil</option>
+                  <option value="Other" selected>Other</option>
+                </select>
               </label>
+
               <label>P/L Preview
                 <input id="plPreview" name="trade_pl" readonly autocomplete="off" />
               </label>
@@ -170,6 +186,28 @@
 
             <label>Notes
               <textarea id="notes" name="trade_notes" rows="3" autocomplete="off"></textarea>
+            </label>
+
+            <!-- Added Liquidity Tracking & Timeframe -->
+            <label>Liquidity Sweep?
+              <select id="liquidityTag" name="trade_liquidity">
+                <option value="No" selected>No Sweep</option>
+                <option value="Yes">Yes (Liquidity Swept)</option>
+              </select>
+            </label>
+
+            <label>Liquidity Timeframe
+              <select id="liquidityTF" name="trade_liquidity_tf">
+                <option value="None" selected>—</option>
+                <option value="5m">5 Min</option>
+                <option value="15m">15 Min</option>
+                <option value="30m">30 Min</option>
+                <option value="1h">1 Hr</option>
+                <option value="4h">4 Hr</option>
+                <option value="1D">1 Day</option>
+                <option value="1W">1 Week</option>
+                <option value="1M">1 Month</option>
+              </select>
             </label>
 
             <label>Screenshot
@@ -184,9 +222,40 @@
         </div>
       </section>
 
-      <!-- Reports -->
+      <!-- Reports & Calendar Section -->
       <section id="reports" class="page">
-        <h2>Reports</h2>
+        <h2>Advanced Analytics & Reports</h2>
+
+        <!-- Advanced Metrics Cards -->
+        <div class="cards" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+          <div class="card stat" style="border-left: 4px solid #7c4dff;">
+            <div class="label">Profit Factor</div>
+            <div id="statProfitFactor" class="value" style="color: #dee8f8">—</div>
+          </div>
+          <div class="card stat" style="border-left: 4px solid #00f0d1;">
+            <div class="label">Avg Win Amount</div>
+            <div id="statAvgWin" class="value" style="color: #7ef0c7">—</div>
+          </div>
+          <div class="card stat" style="border-left: 4px solid #ff6b6b;">
+            <div class="label">Avg Loss Amount</div>
+            <div id="statAvgLoss" class="value" style="color: #ff7b7b">—</div>
+          </div>
+          <div class="card stat" style="border-left: 4px solid #e6f2ff;">
+            <div class="label">Liquidity Win Rate</div>
+            <div id="statLiqWinRate" class="value" style="color: #00f0d1">—</div>
+          </div>
+        </div>
+
+        <!-- Interactive Trading Calendar -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Trading Calendar</span>
+            <div style="font-size: 13px; color: var(--muted);" id="calendarMonthYear"></div>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <!-- Charts Grid -->
         <div class="cards">
           <div class="card">
             <div class="card-header">Win vs Loss</div>
@@ -197,11 +266,15 @@
             <canvas id="monthlyChart" height="160"></canvas>
           </div>
         </div>
-      </section>
-    </main>
-  </div>
 
-  <script src="script.js"></script>
+        <!-- Liquidity Timeframe Analysis Chart -->
+        <div class="card" style="margin-top: 20px;">
+          <div class="card-header">P/L by Liquidity Timeframe</div>
+          <canvas id="liquidityChart" height="100"></canvas>
+        </div>
+      </section>
+
+      <script src="script.js"></script>
 </body>
 
 </html>
