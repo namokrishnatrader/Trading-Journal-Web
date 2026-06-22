@@ -337,139 +337,146 @@ if (searchBox) {
   searchBox.addEventListener('input', () => renderAll());
 }
 
-/// ====== IS NYE COMPRESSED PDF CODE KO APNE SCRIPT.JS MEIN PURA REPLACE KAREIN ======
+// ====== IS CORRECTED CODE KO APNE SCRIPT.JS MEIN REPLACE KAREIN ======
 
-document.getElementById('exportPdfBtn').addEventListener('click', function () {
-  if (trades.length === 0) {
-    alert('No trades to export');
-    return;
-  }
-
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("jsPDF library load nahi hui hai! Internet check karein.");
-    return;
-  }
-
-  const jsPDF = window.jspdf.jsPDF;
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  // --- Title Header Banner ---
-  pdf.setFillColor(15, 19, 24);
-  pdf.rect(0, 0, pageWidth, 40, 'F');
-
-  pdf.setTextColor(0, 240, 209);
-  pdf.setFontSize(22);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("TRADEBACK TESTING REPORT", 14, 18);
-
-  pdf.setTextColor(154, 164, 178);
-  pdf.setFontSize(10);
-  pdf.setFont("helvetica", "normal");
-  pdf.text("Generated on: " + new Date().toLocaleDateString(), 14, 25);
-
-  const netPL = trades.reduce((a, b) => a + (Number(b.pl) || 0), 0).toFixed(2);
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(11);
-  pdf.text("Total Trades: " + trades.length + "   |   Net P/L: $" + netPL, 14, 34);
-
-  let yPos = 50;
-
-  for (let i = 0; i < trades.length; i++) {
-    const t = trades[i];
-    let hasImage = (t.screenshot && t.screenshot.indexOf("data:image") === 0);
-    let requiredSpace = hasImage ? 95 : 35; // Heavy images ke liye structure block array space
-
-    // Auto page change logic
-    if (yPos + requiredSpace > pageHeight - 15) {
-      pdf.addPage();
-      yPos = 20;
+document.getElementById('exportPdfBtn').addEventListener('click', function() {
+  try {
+    if (!trades || trades.length === 0) { 
+      alert('No trades to export'); 
+      return; 
     }
 
-    // 1. Trade Card Box
-    pdf.setDrawColor(220, 225, 235);
-    pdf.setFillColor(248, 250, 252);
-    pdf.rect(12, yPos, pageWidth - 24, requiredSpace - 5, 'FM');
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      alert("jsPDF library load nahi hui hai! Kripya internet check karein.");
+      return;
+    }
 
-    // 2. Card Status Top Bar
-    pdf.setFillColor(22, 160, 133);
-    pdf.rect(12, yPos, pageWidth - 24, 7, 'F');
+    const jsPDF = window.jspdf.jsPDF;
+    const pdf = new jsPDF('p', 'mm', 'a4'); 
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
-    pdf.setTextColor(255, 255, 255);
+    // --- Title Header Banner ---
+    pdf.setFillColor(15, 19, 24); 
+    pdf.rect(0, 0, pageWidth, 40, 'F');
+    
+    pdf.setTextColor(0, 240, 209); 
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("TRADEBACK TESTING REPORT", 14, 18);
+
+    pdf.setTextColor(154, 164, 178); 
     pdf.setFontSize(10);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("TRADE DETAILS — Date: " + (t.date || "-") + " " + (t.time || "") + " | Symbol: " + (t.symbol || "-"), 16, yPos + 5);
-
-    yPos += 14;
-    pdf.setTextColor(40, 40, 40);
-    pdf.setFontSize(9.5);
-
-    // Side Grid Info
-    pdf.setFont("helvetica", "bold"); pdf.text("Side:", 16, yPos);
     pdf.setFont("helvetica", "normal");
-    const sideText = (t.side || "-").toUpperCase();
-    if (sideText === 'LONG') {
-      pdf.setTextColor(22, 163, 74);
-    } else {
-      pdf.setTextColor(239, 68, 68);
-    }
-    pdf.text(sideText, 32, yPos);
-    pdf.setTextColor(40, 40, 40);
+    pdf.text("Generated on: " + new Date().toLocaleDateString(), 14, 25);
 
-    pdf.setFont("helvetica", "bold"); pdf.text("Lot Size:", 65, yPos);
-    pdf.setFont("helvetica", "normal"); pdf.text("" + (t.lot || "-"), 85, yPos);
+    const netPL = trades.reduce((a, b) => a + (Number(b.pl) || 0), 0).toFixed(2);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(11);
+    pdf.text("Total Trades: " + trades.length + "   |   Net P/L: $" + netPL, 14, 34);
 
-    pdf.setFont("helvetica", "bold"); pdf.text("P/L Amount:", 125, yPos);
-    pdf.setFont("helvetica", "bold");
-    const plVal = Number(t.pl || 0);
-    if (plVal >= 0) {
-      pdf.setTextColor(22, 160, 133);
-    } else {
-      pdf.setTextColor(211, 47, 47);
-    }
-    pdf.text((plVal >= 0 ? '+' : '') + plVal.toFixed(2), 150, yPos);
-    pdf.setTextColor(40, 40, 40);
+    let yPos = 50;
 
-    yPos += 6;
-    pdf.setFont("helvetica", "bold"); pdf.text("Entry:", 16, yPos);
-    pdf.setFont("helvetica", "normal"); pdf.text("" + (t.entry || "-"), 32, yPos);
+    for (let i = 0; i < trades.length; i++) {
+      const t = trades[i];
+      
+      let hasImage = (t.screenshot && typeof t.screenshot === 'string' && t.screenshot.indexOf("data:image") === 0);
+      let requiredSpace = hasImage ? 95 : 35; 
+      
+      // Auto page break
+      if (yPos + requiredSpace > pageHeight - 15) {
+        pdf.addPage();
+        yPos = 20; 
+      }
 
-    pdf.setFont("helvetica", "bold"); pdf.text("Exit Price:", 65, yPos);
-    pdf.setFont("helvetica", "normal"); pdf.text("" + (t.exit || "-"), 85, yPos);
+      // 1. Card Background Box (FIXED: Separated Fill and Stroke to avoid 'FM' error)
+      pdf.setFillColor(248, 250, 252); 
+      pdf.rect(12, yPos, pageWidth - 24, requiredSpace - 5, 'F'); // Fill Background
+      pdf.setDrawColor(220, 225, 235);
+      pdf.rect(12, yPos, pageWidth - 24, requiredSpace - 5, 'S'); // Draw Border
 
-    pdf.setFont("helvetica", "bold"); pdf.text("Liq Sweep:", 125, yPos);
-    pdf.setFont("helvetica", "normal");
-    const liqDisplay = t.liquidity === 'Yes' ? "Yes (" + (t.liquidity_tf || 'No TF') + ")" : 'No';
-    pdf.text(liqDisplay, 150, yPos);
+      // 2. Card Header Status
+      pdf.setFillColor(22, 160, 133); 
+      pdf.rect(12, yPos, pageWidth - 24, 7, 'F');
+      
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("TRADE DETAILS — Date: " + (t.date || "-") + " " + (t.time || "") + " | Symbol: " + (t.symbol || "-"), 16, yPos + 5);
 
-    // 3. Image Compression & Auto-rendering Section
-    if (hasImage) {
-      yPos += 5;
-      try {
-        // FAST compression format lagakar render kiya taaki code download na roke
-        pdf.addImage(t.screenshot, 'JPEG', 16, yPos, 115, 55, undefined, 'FAST');
-        yPos += 60;
-      } catch (err) {
-        console.log("Image compression bypass used for heavy data:", err);
+      yPos += 14;
+      pdf.setTextColor(40, 40, 40);
+      pdf.setFontSize(9.5);
+      
+      // Side info
+      pdf.setFont("helvetica", "bold"); pdf.text("Side:", 16, yPos);
+      pdf.setFont("helvetica", "normal"); 
+      const sideText = (t.side || "-").toUpperCase();
+      if (sideText === 'LONG' || sideText === 'BUY') {
+        pdf.setTextColor(22, 163, 74); 
+      } else {
+        pdf.setTextColor(239, 68, 68); 
+      }
+      pdf.text(sideText, 32, yPos);
+      pdf.setTextColor(40, 40, 40);
+
+      pdf.setFont("helvetica", "bold"); pdf.text("Lot Size:", 65, yPos);
+      pdf.setFont("helvetica", "normal"); pdf.text("" + (t.lot || "-"), 85, yPos);
+
+      pdf.setFont("helvetica", "bold"); pdf.text("P/L Amount:", 125, yPos);
+      pdf.setFont("helvetica", "bold");
+      const plVal = Number(t.pl || 0);
+      if (plVal >= 0) {
+        pdf.setTextColor(22, 160, 133);
+      } else {
+        pdf.setTextColor(211, 47, 47);
+      }
+      pdf.text((plVal >= 0 ? '+' : '') + plVal.toFixed(2), 150, yPos);
+      pdf.setTextColor(40, 40, 40);
+
+      yPos += 6;
+      pdf.setFont("helvetica", "bold"); pdf.text("Entry:", 16, yPos);
+      pdf.setFont("helvetica", "normal"); pdf.text("" + (t.entry || "-"), 32, yPos);
+
+      pdf.setFont("helvetica", "bold"); pdf.text("Exit Price:", 65, yPos);
+      pdf.setFont("helvetica", "normal"); pdf.text("" + (t.exit || "-"), 85, yPos);
+
+      pdf.setFont("helvetica", "bold"); pdf.text("Liq Sweep:", 125, yPos);
+      pdf.setFont("helvetica", "normal"); 
+      const liqDisplay = t.liquidity === 'Yes' ? "Yes (" + (t.liquidity_tf || 'No TF') + ")" : 'No';
+      pdf.text(liqDisplay, 150, yPos);
+
+      // 3. Image Section
+      if (hasImage) {
+        yPos += 5;
+        try {
+          pdf.addImage(t.screenshot, 'UNKNOWN', 16, yPos, 115, 55, undefined, 'FAST');
+          yPos += 60; 
+        } catch (imgError) {
+          console.log("Image skip fallback activated:", imgError);
+          pdf.setFont("helvetica", "italic");
+          pdf.setTextColor(150, 100, 100);
+          pdf.text("[Screenshot format incompatible for PDF render]", 16, yPos + 5);
+          pdf.setTextColor(40, 40, 40);
+          yPos += 10;
+        }
+      } else {
+        yPos += 5;
         pdf.setFont("helvetica", "italic");
-        pdf.setTextColor(239, 68, 68);
-        pdf.text("[Image Too Heavy - Displayed in App Journal Only]", 16, yPos + 5);
+        pdf.setTextColor(120, 120, 120);
+        pdf.text("[No Screenshot Attached for this trade]", 16, yPos);
         pdf.setTextColor(40, 40, 40);
         yPos += 10;
       }
-    } else {
-      yPos += 5;
-      pdf.setFont("helvetica", "italic");
-      pdf.setTextColor(120, 120, 120);
-      pdf.text("[No Screenshot Attached for this trade]", 16, yPos);
-      pdf.setTextColor(40, 40, 40);
-      yPos += 10;
+      yPos += 5; 
     }
-    yPos += 5;
-  }
+    
+    pdf.save("trade_journal_combined_report.pdf");
 
-  pdf.save("trade_journal_combined_report.pdf");
+  } catch (globalError) {
+    console.error("Critical error inside PDF export function:", globalError);
+    alert("🚨 PDF generate karne mein koi dikkat aayi hai. Kripya Console check karein.");
+  }
 });
 
 // Master Render
