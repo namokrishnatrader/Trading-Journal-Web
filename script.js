@@ -1,8 +1,7 @@
-// script.js — FTMO-style Trade Journal app (vanilla JS)
+// script.js — FTMO-style Trade Journal app (Fully Fixed with Combined PDF & Screenshots)
 const LS_KEY = 'tj_ftmo_v1';
 let trades = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
 
-// DOM refs
 const pages = {
   dashboard: document.getElementById('dashboard'),
   journal: document.getElementById('journal'),
@@ -28,7 +27,7 @@ function save() {
   renderAll(); 
 }
 
-// 1. Fixed Category detection to support Silver (XAGUSD) properly
+// Category detection
 function getCategory(sym) {
   if (!sym) return 'Other';
   sym = sym.toUpperCase().trim();
@@ -40,14 +39,16 @@ function getCategory(sym) {
   return 'Other';
 }
 
+// P/L calculation per instrument
 function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   if (isNaN(entry) || isNaN(exit) || isNaN(lot)) return null;
   symbol = (symbol || '').toUpperCase().trim();
   let pl = 0;
+  
   if (symbol.includes('XAU')) {
     pl = (exit - entry) * 100 * lot * contract;
   } else if (symbol.includes('XAG')) {
-    pl = (exit - entry) * 5000 * lot * contract; // Silver calculation point multiplier
+    pl = (exit - entry) * 5000 * lot * contract; 
   } else if (symbol.includes('XTI') || symbol.includes('OIL') || symbol.includes('USOIL')) {
     pl = ((exit - entry) / 0.01) * lot * contract;
   } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
@@ -61,7 +62,7 @@ function calculatePL(symbol, entry, exit, lot, contract = 1, side = 'long') {
   return side === 'long' ? Number(pl.toFixed(2)) : Number((-pl).toFixed(2));
 }
 
-// 2. Render Journal Table without notes, showing Liquidity Sweep Timeframe
+// Render Journal Table
 function renderJournal(filter = 'All', search = '') {
   journalBody.innerHTML = '';
   const rows = trades.filter(t => {
@@ -75,8 +76,6 @@ function renderJournal(filter = 'All', search = '') {
 
   rows.forEach((t) => {
     const tr = document.createElement('tr');
-    
-    // Proper handling of Liquidity Check & Timeframe
     const isSweep = t.liquidity === 'Yes';
     const tf = t.liquidity_tf || 'None';
     let liquidityDisplay = 'No';
@@ -88,11 +87,11 @@ function renderJournal(filter = 'All', search = '') {
       <td>${t.date} ${t.time || ''}</td>
       <td><strong>${t.symbol}</strong></td>
       <td>${getCategory(t.symbol)}</td>
-      <td>${t.side}</td>
+      <td><span class="side-badge ${t.side}">${t.side.toUpperCase()}</span></td>
       <td>${t.entry}</td>
       <td>${t.exit}</td>
       <td>${t.lot}</td>
-      <td style="color:${t.pl >= 0 ? '#7ef0c7' : '#ff7b7b'}">${t.pl?.toFixed(2) ?? '—'}</td>
+      <td style="color:${t.pl >= 0 ? '#7ef0c7' : '#ff7b7b'}; font-weight:bold;">${t.pl >= 0 ? '+' : ''}${t.pl?.toFixed(2) ?? '—'}</td>
       <td style="font-weight: 600; color: ${isSweep ? '#7c4dff' : '#cfe6ff'}">${liquidityDisplay}</td>
       <td>
         ${t.screenshot
@@ -107,6 +106,7 @@ function renderJournal(filter = 'All', search = '') {
   });
 }
 
+// Render Dashboard Charts & Stats
 function renderDashboard() {
   const net = trades.reduce((a, b) => a + (Number(b.pl) || 0), 0);
   const total = trades.length;
@@ -122,11 +122,11 @@ function renderDashboard() {
   recentList.innerHTML = '';
   trades.slice(0, 6).forEach(t => {
     const d = document.createElement('div'); d.className = 'recent-item';
-    d.innerHTML = `<div><strong>${t.symbol}</strong><div class="muted">${t.date}</div></div><div style="text-align:right"><div style="font-weight:700">${t.pl?.toFixed(2) ?? '—'}</div><div class="muted">${getCategory(t.symbol)}</div></div>`;
+    d.innerHTML = `<div><strong>${t.symbol}</strong><div class="muted">${t.date}</div></div><div style="text-align:right"><div style="font-weight:700; color:${t.pl >= 0 ? '#7ef0c7' : '#ff7b7b'}">${t.pl >= 0 ? '+' : ''}${t.pl?.toFixed(2) ?? '—'}</div><div class="muted">${getCategory(t.symbol)}</div></div>`;
     recentList.appendChild(d);
   });
 
-  const labels = trades.map(t => t.date).reverse();
+  const labels = [...trades].reverse().map(t => t.date);
   let cum = 0; const data = [...trades].reverse().map(t => (cum += Number(t.pl) || 0));
   if (equityChart) equityChart.destroy();
   equityChart = new Chart(equityCtx, {
@@ -183,14 +183,18 @@ function showSection(id) {
   renderAll();
 }
 
+// Auto Category Setup
 document.getElementById('symbol').addEventListener('input', e => {
   const cat = getCategory(e.target.value);
   document.getElementById('category').value = cat;
   updatePLPreview();
 });
+
+// Event listeners for REAL-TIME preview calculations
 ['entry', 'exit', 'lot', 'contract', 'side', 'stoploss'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updatePLPreview);
+  if (el && el.tagName === 'SELECT') el.addEventListener('change', updatePLPreview);
 });
 
 function updatePLPreview() {
@@ -204,26 +208,29 @@ function updatePLPreview() {
   
   if (sym && !isNaN(entry) && !isNaN(exit)) {
     const pl = calculatePL(sym, entry, exit, lot, contract, side);
-    let output = (pl === null ? '—' : (pl >= 0 ? '+' : '') + pl.toFixed(2));
+    let output = "Target P/L: " + (pl === null ? '—' : (pl >= 0 ? '+' : '') + pl.toFixed(2));
     
     const stop = parseFloat(document.getElementById("stoploss").value);
     if (!isNaN(stop)) {
       const slLoss = calculatePL(sym, entry, stop, lot, contract, side);
-      output += ` | SL Risk: ${slLoss.toFixed(2)}`;
+      output += ` | SL Risk: ${(slLoss >= 0 ? '+' : '')}${slLoss.toFixed(2)}`;
     }
     preview.value = output;
-  } else preview.value = '';
+  } else {
+    preview.value = '';
+  }
 }
 
-// 3. Form Submission with success alert popup message
+// ====== FORM SUBMISSION LOGIC (FIXED SAVE FUNCTION) ======
 document.getElementById("tradeForm").addEventListener("submit", e => {
   e.preventDefault();
   const fileInput = document.getElementById("screenshot");
 
-  const saveTradeWithScreenshot = (screenshot) => {
+  const saveTradeWithScreenshot = (screenshotData) => {
     const symbol = document.getElementById("symbol").value.toUpperCase().trim();
     const entry = parseFloat(document.getElementById("entry").value);
     const exit = parseFloat(document.getElementById("exit").value);
+    const side = document.getElementById("side").value;
 
     if (!symbol || isNaN(entry) || isNaN(exit)) {
       alert("Please fill Symbol, Entry, and Exit before saving!");
@@ -235,14 +242,15 @@ document.getElementById("tradeForm").addEventListener("submit", e => {
       date: document.getElementById("tradeDate").value || new Date().toISOString().slice(0, 10),
       time: document.getElementById("tradeTime").value || new Date().toTimeString().slice(0, 5),
       symbol,
-      side: document.getElementById("side").value,
+      side,
       entry,
       exit,
       lot: parseFloat(document.getElementById("lot").value) || 1,
       contract: parseFloat(document.getElementById("contract").value) || 1,
-      screenshot: screenshot || "",
+      screenshot: screenshotData || "",
       liquidity: document.getElementById("liquidityTag").value,
-      liquidity_tf: document.getElementById("liquidityTF").value
+      liquidity_tf: document.getElementById("liquidityTF").value,
+      notes: document.getElementById("notes").value
     };
 
     trade.pl = calculatePL(trade.symbol, trade.entry, trade.exit, trade.lot, trade.contract, trade.side);
@@ -250,14 +258,13 @@ document.getElementById("tradeForm").addEventListener("submit", e => {
     trades.unshift(trade);
     save();
 
-    // Success Alert Message
     alert("🎉 Saved your trade successfully!");
     document.getElementById("tradeForm").reset();
     document.getElementById("category").value = 'Other';
     document.getElementById("plPreview").value = '';
   };
 
-  if (fileInput.files.length > 0) {
+  if (fileInput && fileInput.files.length > 0) {
     const reader = new FileReader();
     reader.onload = () => saveTradeWithScreenshot(reader.result);
     reader.readAsDataURL(fileInput.files[0]);
@@ -272,7 +279,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('category').value = 'Other';
 });
 
-// Remove single trade handler
+// Remove single trade
 document.body.addEventListener('click', (ev) => {
   if (ev.target.matches('.remove-btn')) {
     const id = ev.target.getAttribute('data-index');
@@ -282,7 +289,7 @@ document.body.addEventListener('click', (ev) => {
   }
 });
 
-// 4. Global Clear All Trades Functionality (Select/Delete All)
+// Clear All Trades Functionality
 const clearAllBtn = document.getElementById('clearAllBtn');
 if (clearAllBtn) {
   clearAllBtn.addEventListener('click', () => {
@@ -290,15 +297,15 @@ if (clearAllBtn) {
       alert("Journal pehle se hi khali hai!");
       return;
     }
-    if (confirm("🚨 Warning: Kya aap sach mein SARE trades delete karna chahte hain? Ek baar delete karne ke baad data vapas nahi aayega!")) {
+    if (confirm("🚨 Warning: Kya aap sach mein SARE trades delete karna chahte hain?")) {
       trades = [];
       save();
-      alert("💥 Saare trades ek sath clear kar diye gaye hain!");
+      alert("Saare trades clear kar diye gaye hain!");
     }
   });
 }
 
-// 5. Screenshot Zoom Modal Popup Click Handler
+// Screenshot Zoom Modal Popup Click Handler
 document.body.addEventListener('click', (ev) => {
   if (ev.target.matches('.journal-table img')) {
     const modal = document.getElementById('imageModal');
@@ -330,47 +337,120 @@ if (searchBox) {
   searchBox.addEventListener('input', () => renderAll());
 }
 
-window.addEventListener("load", () => {
-  trades = trades.filter(t => t && t._id && t.symbol);
-  renderAll();
-});
-
-document.getElementById('exportPdfBtn').addEventListener('click', () => {
+// ====== COMBINED IN-LINE PDF EXPORT BUTTON LOGIC ======
+document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   if (trades.length === 0) { 
     alert('No trades to export'); 
     return; 
   }
+
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-  pdf.setFontSize(16);
-  pdf.text("Backtesting Report", 14, 20);
-  pdf.setFontSize(12);
-  pdf.text(`Total Trades: ${trades.length}`, 14, 35);
+  const pdf = new jsPDF('p', 'mm', 'a4'); 
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // --- Title Section ---
+  pdf.setFillColor(15, 19, 24); 
+  pdf.rect(0, 0, pageWidth, 40, 'F');
+  
+  pdf.setTextColor(0, 240, 209); 
+  pdf.setFontSize(22);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("TRADEBACK TESTING REPORT", 14, 18);
+
+  pdf.setTextColor(154, 164, 178); 
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 25);
+
   const netPL = trades.reduce((a, b) => a + (Number(b.pl) || 0), 0).toFixed(2);
-  pdf.text(`Net P/L: ${netPL}`, 14, 45);
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(11);
+  pdf.text(`Total Trades: ${trades.length}   |   Net P/L: $${netPL}`, 14, 34);
 
-  const tableData = trades.map(t => [
-    t.date || "-",
-    t.time || "-",
-    t.symbol || "-",
-    t.side || "-",
-    t.entry || "-",
-    t.exit || "-",
-    t.lot || "-",
-    (t.pl >= 0 ? "+" : "") + (t.pl?.toFixed(2) ?? "-")
-  ]);
+  let yPos = 50;
 
-  pdf.autoTable({
-    head: [["Date", "Time", "Symbol", "Side", "Entry", "Exit", "Lot", "P/L"]],
-    body: tableData,
-    startY: 60,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [22, 160, 133] },
-    alternateRowStyles: { fillColor: [240, 240, 240] }
-  });
-  pdf.save("trade_report.pdf");
+  for (let i = 0; i < trades.length; i++) {
+    const t = trades[i];
+    let requiredSpace = t.screenshot && t.screenshot.startsWith("data:image") ? 95 : 35;
+    
+    if (yPos + requiredSpace > pageHeight - 15) {
+      pdf.addPage();
+      yPos = 20; 
+    }
+
+    // 1. Card Border Box
+    pdf.setDrawColor(220, 225, 235);
+    pdf.setFillColor(248, 250, 252); 
+    pdf.rect(12, yPos, pageWidth - 24, requiredSpace - 5, 'FM');
+
+    // 2. Card Header
+    pdf.setFillColor(22, 160, 133); 
+    pdf.rect(12, yPos, pageWidth - 24, 7, 'F');
+    
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(`TRADE DETAILS — Date: ${t.date || "-"} ${t.time || ""} | Symbol: ${t.symbol || "-"}`, 16, yPos + 5);
+
+    yPos += 14;
+    pdf.setTextColor(40, 40, 40);
+    pdf.setFontSize(9.5);
+    
+    // Side
+    pdf.setFont("helvetica", "bold"); pdf.text("Side:", 16, yPos);
+    pdf.setFont("helvetica", "normal"); 
+    const sideText = (t.side || "-").toUpperCase();
+    pdf.setTextColor(sideText === 'LONG' ? 22 : 239, sideText === 'LONG' ? 163 : 68, sideText === 'LONG' ? 74 : 68); 
+    pdf.text(sideText, 32, yPos);
+    pdf.setTextColor(40, 40, 40);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("Lot Size:", 65, yPos);
+    pdf.setFont("helvetica", "normal"); pdf.text(`${t.lot || "-"}`, 85, yPos);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("P/L Amount:", 125, yPos);
+    pdf.setFont("helvetica", "bold");
+    const plVal = Number(t.pl || 0);
+    pdf.setTextColor(plVal >= 0 ? 22 : 211, plVal >= 0 ? 160 : 47, plVal >= 0 ? 133 : 47);
+    pdf.text(`${plVal >= 0 ? '+' : ''}${plVal.toFixed(2)}`, 150, yPos);
+    pdf.setTextColor(40, 40, 40);
+
+    yPos += 6;
+    pdf.setFont("helvetica", "bold"); pdf.text("Entry:", 16, yPos);
+    pdf.setFont("helvetica", "normal"); pdf.text(`${t.entry || "-"}`, 32, yPos);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("Exit Price:", 65, yPos);
+    pdf.setFont("helvetica", "normal"); pdf.text(`${t.exit || "-"}`, 85, yPos);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("Liq Sweep:", 125, yPos);
+    pdf.setFont("helvetica", "normal"); 
+    const liqDisplay = t.liquidity === 'Yes' ? `Yes (${t.liquidity_tf || 'No TF'})` : 'No';
+    pdf.text(liqDisplay, 150, yPos);
+
+    // Image Embed
+    if (t.screenshot && t.screenshot.startsWith("data:image")) {
+      yPos += 5;
+      try {
+        pdf.addImage(t.screenshot, 'PNG', 16, yPos, 115, 55);
+        yPos += 60; 
+      } catch (err) {
+        console.error("Error drawing image in-line:", err);
+        yPos += 5;
+      }
+    } else {
+      yPos += 5;
+      pdf.setFont("helvetica", "italic");
+      pdf.setTextColor(120, 120, 120);
+      pdf.text("[No Screenshot Attached for this trade]", 16, yPos);
+      pdf.setTextColor(40, 40, 40);
+      yPos += 10;
+    }
+    yPos += 5; 
+  }
+  pdf.save("trade_journal_combined_report.pdf");
 });
 
+// Master Render
 function renderAll() {
   trades = trades.filter(t => t && t._id && t.symbol);
   const activeFilter = document.querySelector('.filter-btn.active')?.dataset.cat || 'All';
@@ -379,4 +459,6 @@ function renderAll() {
   renderDashboard();
 }
 
-renderAll();
+window.addEventListener("load", () => {
+  renderAll();
+});
