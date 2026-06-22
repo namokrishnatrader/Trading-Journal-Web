@@ -23,9 +23,9 @@ const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
 let equityChart, winLossChart, monthlyChart;
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
-function save() { 
-  localStorage.setItem(LS_KEY, JSON.stringify(trades)); 
-  renderAll(); 
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify(trades));
+  renderAll();
 }
 
 // 1. Fixed Category detection to support Silver (XAGUSD) properly
@@ -75,7 +75,7 @@ function renderJournal(filter = 'All', search = '') {
 
   rows.forEach((t) => {
     const tr = document.createElement('tr');
-    
+
     // Proper handling of Liquidity Check & Timeframe
     const isSweep = t.liquidity === 'Yes';
     const tf = t.liquidity_tf || 'None';
@@ -201,11 +201,11 @@ function updatePLPreview() {
   const contract = parseFloat(document.getElementById('contract').value) || 1;
   const side = document.getElementById('side').value || 'long';
   const preview = document.getElementById('plPreview');
-  
+
   if (sym && !isNaN(entry) && !isNaN(exit)) {
     const pl = calculatePL(sym, entry, exit, lot, contract, side);
     let output = (pl === null ? '—' : (pl >= 0 ? '+' : '') + pl.toFixed(2));
-    
+
     const stop = parseFloat(document.getElementById("stoploss").value);
     if (!isNaN(stop)) {
       const slLoss = calculatePL(sym, entry, stop, lot, contract, side);
@@ -335,48 +335,129 @@ window.addEventListener("load", () => {
   renderAll();
 });
 
-document.getElementById('exportPdfBtn').addEventListener('click', () => {
-  if (trades.length === 0) { 
-    alert('No trades to export'); 
-    return; 
+// Dynamic PDF Export — Grouping Trade Details & Screenshots Together
+document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+  if (trades.length === 0) {
+    alert('No trades to export');
+    return;
   }
+
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-  pdf.setFontSize(16);
-  pdf.text("Backtesting Report", 14, 20);
-  pdf.setFontSize(12);
-  pdf.text(`Total Trades: ${trades.length}`, 14, 35);
+  const pdf = new jsPDF('p', 'mm', 'a4'); // A4 size page
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // --- Title Section ---
+  pdf.setFillColor(15, 19, 24); // Dark background theme for header
+  pdf.rect(0, 0, pageWidth, 40, 'F');
+
+  pdf.setTextColor(0, 240, 209); // Neon/Cyan accent color
+  pdf.setFontSize(22);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("TRADEBACK TESTING REPORT", 14, 18);
+
+  pdf.setTextColor(154, 164, 178); // Muted grey text
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 25);
+
+  // --- Summary Stats ---
   const netPL = trades.reduce((a, b) => a + (Number(b.pl) || 0), 0).toFixed(2);
-  pdf.text(`Net P/L: ${netPL}`, 14, 45);
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(11);
+  pdf.text(`Total Trades: ${trades.length}   |   Net P/L: $${netPL}`, 14, 34);
 
-  const tableData = trades.map(t => [
-    t.date || "-",
-    t.time || "-",
-    t.symbol || "-",
-    t.side || "-",
-    t.entry || "-",
-    t.exit || "-",
-    t.lot || "-",
-    (t.pl >= 0 ? "+" : "") + (t.pl?.toFixed(2) ?? "-")
-  ]);
+  let yPos = 50;
 
-  pdf.autoTable({
-    head: [["Date", "Time", "Symbol", "Side", "Entry", "Exit", "Lot", "P/L"]],
-    body: tableData,
-    startY: 60,
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [22, 160, 133] },
-    alternateRowStyles: { fillColor: [240, 240, 240] }
-  });
-  pdf.save("trade_report.pdf");
+  // --- Loop Through Each Trade (Latest to Oldest) ---
+  for (let i = 0; i < trades.length; i++) {
+    const t = trades[i];
+
+    // Screenshot aur details dono ke liye minimum 95mm space chahiye, nahi toh naye page par bhejenge
+    let requiredSpace = t.screenshot && t.screenshot.startsWith("data:image") ? 95 : 35;
+
+    if (yPos + requiredSpace > pageHeight - 15) {
+      pdf.addPage();
+      yPos = 20; // Naye page par top margin reset
+    }
+
+    // 1. Trade Card Header / Border Box
+    pdf.setDrawColor(220, 225, 235);
+    pdf.setFillColor(248, 250, 252); // Light background tint for trade block
+    pdf.rect(12, yPos, pageWidth - 24, requiredSpace - 5, 'FM');
+
+    // 2. Trade Header Info Line
+    pdf.setFillColor(22, 160, 133); // Emerald Green bar for single trade header
+    pdf.rect(12, yPos, pageWidth - 24, 7, 'F');
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(`TRADE DETAILS — Date: ${t.date || "-"} ${t.time || ""} | Symbol: ${t.symbol || "-"}`, 16, yPos + 5);
+
+    // 3. Trade Metrics Grid (Text Values)
+    yPos += 14;
+    pdf.setTextColor(40, 40, 40);
+    pdf.setFontSize(9.5);
+
+    // Column 1
+    pdf.setFont("helvetica", "bold"); pdf.text("Side:", 16, yPos);
+    pdf.setFont("helvetica", "normal");
+    const sideText = (t.side || "-").toUpperCase();
+    pdf.setTextColor(sideText === 'LONG' ? 22 : 239, sideText === 'LONG' ? 163 : 68, sideText === 'LONG' ? 74 : 68); // Long=Green, Short=Red
+    pdf.text(sideText, 32, yPos);
+    pdf.setTextColor(40, 40, 40);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("Lot Size:", 65, yPos);
+    pdf.setFont("helvetica", "normal"); pdf.text(`${t.lot || "-"}`, 85, yPos);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("P/L Amount:", 125, yPos);
+    pdf.setFont("helvetica", "bold");
+    const plVal = Number(t.pl || 0);
+    pdf.setTextColor(plVal >= 0 ? 22 : 211, plVal >= 0 ? 160 : 47, plVal >= 0 ? 133 : 47);
+    pdf.text(`${plVal >= 0 ? '+' : ''}${plVal.toFixed(2)}`, 150, yPos);
+    pdf.setTextColor(40, 40, 40);
+
+    // Row 2 of Grid
+    yPos += 6;
+    pdf.setFont("helvetica", "bold"); pdf.text("Entry:", 16, yPos);
+    pdf.setFont("helvetica", "normal"); pdf.text(`${t.entry || "-"}`, 32, yPos);
+
+    pdf.setFont("helvetica", "bold"); pdf.text("Exit Price:", 65, yPos);
+    pdf.setFont("helvetica", "normal"); pdf.text(`${t.exit || "-"}`, 85, yPos);
+
+    // Liquidity Status
+    pdf.setFont("helvetica", "bold"); pdf.text("Liq Sweep:", 125, yPos);
+    pdf.setFont("helvetica", "normal");
+    const liqDisplay = t.liquidity === 'Yes' ? `Yes (${t.liquidity_tf || 'No TF'})` : 'No';
+    pdf.text(liqDisplay, 150, yPos);
+
+    // 4. Screenshot Embedding (Agar trade mein screenshot attached hai)
+    if (t.screenshot && t.screenshot.startsWith("data:image")) {
+      yPos += 5;
+      try {
+        // Image ko thik trade metrics ke niche fix dimensions par render karna
+        pdf.addImage(t.screenshot, 'PNG', 16, yPos, 115, 55);
+        yPos += 60; // Image ki height + extra padding background box ke andar setup karne ke liye
+      } catch (err) {
+        console.error("Error drawing image in-line:", err);
+        yPos += 5;
+      }
+    } else {
+      // Agar screenshot nahi hai toh empty text show karein
+      yPos += 5;
+      pdf.setFont("helvetica", "italic");
+      pdf.setTextColor(120, 120, 120);
+      pdf.text("[No Screenshot Attached for this trade]", 16, yPos);
+      pdf.setTextColor(40, 40, 40);
+      yPos += 10;
+    }
+
+    yPos += 5; // Agle poore trade section card block ke liye separation margin gap
+  }
+
+  // File Download Save Trigger
+  pdf.save("trade_journal_combined_report.pdf");
 });
-
-function renderAll() {
-  trades = trades.filter(t => t && t._id && t.symbol);
-  const activeFilter = document.querySelector('.filter-btn.active')?.dataset.cat || 'All';
-  const search = document.getElementById('searchBox')?.value || '';
-  renderJournal(activeFilter, search);
-  renderDashboard();
-}
 
 renderAll();
