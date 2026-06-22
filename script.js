@@ -337,7 +337,7 @@ if (searchBox) {
   searchBox.addEventListener('input', () => renderAll());
 }
 
-// ====== IS NYE CODE KO EXPORT BUTTON KI JAGAH LAGAYEIN ======
+/// ====== IS NYE COMPRESSED PDF CODE KO APNE SCRIPT.JS MEIN PURA REPLACE KAREIN ======
 
 document.getElementById('exportPdfBtn').addEventListener('click', function () {
   if (trades.length === 0) {
@@ -345,9 +345,8 @@ document.getElementById('exportPdfBtn').addEventListener('click', function () {
     return;
   }
 
-  // jsPDF check
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("jsPDF library load nahi hui hai! Kripya internet connection check karein.");
+    alert("jsPDF library load nahi hui hai! Internet check karein.");
     return;
   }
 
@@ -356,7 +355,7 @@ document.getElementById('exportPdfBtn').addEventListener('click', function () {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // --- Title Section ---
+  // --- Title Header Banner ---
   pdf.setFillColor(15, 19, 24);
   pdf.rect(0, 0, pageWidth, 40, 'F');
 
@@ -380,20 +379,20 @@ document.getElementById('exportPdfBtn').addEventListener('click', function () {
   for (let i = 0; i < trades.length; i++) {
     const t = trades[i];
     let hasImage = (t.screenshot && t.screenshot.indexOf("data:image") === 0);
-    let requiredSpace = hasImage ? 95 : 35;
+    let requiredSpace = hasImage ? 95 : 35; // Heavy images ke liye structure block array space
 
-    // Page check logic
+    // Auto page change logic
     if (yPos + requiredSpace > pageHeight - 15) {
       pdf.addPage();
       yPos = 20;
     }
 
-    // 1. Card Box Background
+    // 1. Trade Card Box
     pdf.setDrawColor(220, 225, 235);
     pdf.setFillColor(248, 250, 252);
     pdf.rect(12, yPos, pageWidth - 24, requiredSpace - 5, 'FM');
 
-    // 2. Card Header
+    // 2. Card Status Top Bar
     pdf.setFillColor(22, 160, 133);
     pdf.rect(12, yPos, pageWidth - 24, 7, 'F');
 
@@ -406,14 +405,14 @@ document.getElementById('exportPdfBtn').addEventListener('click', function () {
     pdf.setTextColor(40, 40, 40);
     pdf.setFontSize(9.5);
 
-    // Side Column
+    // Side Grid Info
     pdf.setFont("helvetica", "bold"); pdf.text("Side:", 16, yPos);
     pdf.setFont("helvetica", "normal");
     const sideText = (t.side || "-").toUpperCase();
     if (sideText === 'LONG') {
-      pdf.setTextColor(22, 163, 74); // Green
+      pdf.setTextColor(22, 163, 74);
     } else {
-      pdf.setTextColor(239, 68, 68); // Red
+      pdf.setTextColor(239, 68, 68);
     }
     pdf.text(sideText, 32, yPos);
     pdf.setTextColor(40, 40, 40);
@@ -444,15 +443,20 @@ document.getElementById('exportPdfBtn').addEventListener('click', function () {
     const liqDisplay = t.liquidity === 'Yes' ? "Yes (" + (t.liquidity_tf || 'No TF') + ")" : 'No';
     pdf.text(liqDisplay, 150, yPos);
 
-    // Image section
+    // 3. Image Compression & Auto-rendering Section
     if (hasImage) {
       yPos += 5;
       try {
-        pdf.addImage(t.screenshot, 'PNG', 16, yPos, 115, 55);
+        // FAST compression format lagakar render kiya taaki code download na roke
+        pdf.addImage(t.screenshot, 'JPEG', 16, yPos, 115, 55, undefined, 'FAST');
         yPos += 60;
       } catch (err) {
-        console.log("Error drawing image:", err);
-        yPos += 5;
+        console.log("Image compression bypass used for heavy data:", err);
+        pdf.setFont("helvetica", "italic");
+        pdf.setTextColor(239, 68, 68);
+        pdf.text("[Image Too Heavy - Displayed in App Journal Only]", 16, yPos + 5);
+        pdf.setTextColor(40, 40, 40);
+        yPos += 10;
       }
     } else {
       yPos += 5;
